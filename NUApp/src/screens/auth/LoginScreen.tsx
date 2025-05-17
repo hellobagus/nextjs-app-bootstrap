@@ -1,131 +1,181 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Text, TextInput, SegmentedButtons } from 'react-native-paper';
+import React, { useState } from 'react';
+import { View, StyleSheet, ScrollView } from 'react-native';
+import { Text, TextInput, useTheme } from 'react-native-paper';
 import { CustomButton } from '../../components';
 import { useAuth } from '../../contexts/AuthContext';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../types/navigation';
-import { Formik } from 'formik';
-import * as Yup from 'yup';
-import { UserRole } from '../../types/auth';
+import { testCredentials } from '../../types/auth';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
-const LoginSchema = Yup.object().shape({
-  email: Yup.string().email('Invalid email').required('Email is required'),
-  password: Yup.string().required('Password is required'),
-  role: Yup.string().oneOf(['member', 'adminPusat', 'adminCabang'] as UserRole[]).required('Role is required'),
-});
-
 const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const { login, isLoading, error } = useAuth();
+  const theme = useTheme();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleLogin = () => {
+    login({ email, password });
+  };
+
+  const handleTestLogin = (userType: keyof typeof testCredentials) => {
+    const credentials = testCredentials[userType];
+    setEmail(credentials.email);
+    setPassword(credentials.password);
+    login(credentials);
+  };
 
   return (
-    <View style={styles.container}>
-      <Text variant="headlineMedium" style={styles.title}>Welcome Back</Text>
-      
-      <Formik
-        initialValues={{ email: '', password: '', role: 'member' as UserRole }}
-        validationSchema={LoginSchema}
-        onSubmit={async (values) => {
-          await login({
-            email: values.email,
-            password: values.password,
-            role: values.role as UserRole
-          });
-        }}
-      >
-        {({ handleChange, handleBlur, handleSubmit, setFieldValue, values, errors, touched }) => (
-          <View style={styles.form}>
-            <TextInput
-              label="Email"
-              value={values.email}
-              onChangeText={handleChange('email')}
-              onBlur={handleBlur('email')}
-              error={touched.email && !!errors.email}
-              style={styles.input}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            {touched.email && errors.email && (
-              <Text style={styles.errorText}>{errors.email}</Text>
-            )}
+    <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.header}>
+        <Text variant="headlineMedium">Welcome Back</Text>
+        <Text variant="bodyLarge" style={styles.subtitle}>
+          Sign in to continue
+        </Text>
+      </View>
 
-            <TextInput
-              label="Password"
-              value={values.password}
-              onChangeText={handleChange('password')}
-              onBlur={handleBlur('password')}
-              secureTextEntry
-              error={touched.password && !!errors.password}
-              style={styles.input}
-            />
-            {touched.password && errors.password && (
-              <Text style={styles.errorText}>{errors.password}</Text>
-            )}
+      <View style={styles.form}>
+        <TextInput
+          label="Email"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          style={styles.input}
+        />
 
-            <SegmentedButtons
-              value={values.role}
-              onValueChange={(value) => setFieldValue('role', value)}
-              buttons={[
-                { value: 'member', label: 'Member' },
-                { value: 'adminPusat', label: 'Admin Pusat' },
-                { value: 'adminCabang', label: 'Admin Cabang' },
-              ]}
-              style={styles.roleSelector}
-            />
+        <TextInput
+          label="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          style={styles.input}
+        />
 
-            {error && <Text style={styles.errorText}>{error}</Text>}
+        {error && (
+          <Text variant="bodySmall" style={[styles.error, { color: theme.colors.error }]}>
+            {error}
+          </Text>
+        )}
 
+        <CustomButton
+          mode="contained"
+          onPress={handleLogin}
+          loading={isLoading}
+          style={styles.button}
+        >
+          Sign In
+        </CustomButton>
+
+        <View style={styles.registerSection}>
+          <Text variant="bodyMedium">Don't have an account? </Text>
+          <CustomButton
+            mode="text"
+            onPress={() => navigation.navigate('Register')}
+            style={styles.registerButton}
+          >
+            Register
+          </CustomButton>
+        </View>
+
+        <View style={styles.testAccountsSection}>
+          <Text variant="titleMedium" style={styles.testAccountsTitle}>
+            Test Accounts
+          </Text>
+          <Text variant="bodySmall" style={styles.testAccountsDescription}>
+            Use these accounts to test different user roles:
+          </Text>
+
+          <View style={styles.testButtons}>
             <CustomButton
-              mode="contained"
-              onPress={() => handleSubmit()}
-              loading={isLoading}
-              style={styles.button}
+              mode="outlined"
+              onPress={() => handleTestLogin('member')}
+              style={styles.testButton}
             >
-              Login
+              Member Login
+              {'\n'}
+              <Text variant="bodySmall">member@nu.or.id / member123</Text>
             </CustomButton>
 
             <CustomButton
-              mode="text"
-              onPress={() => navigation.navigate('Register')}
-              style={styles.button}
+              mode="outlined"
+              onPress={() => handleTestLogin('adminPusat')}
+              style={styles.testButton}
             >
-              Don't have an account? Register
+              Admin Pusat Login
+              {'\n'}
+              <Text variant="bodySmall">adminpusat@nu.or.id / adminpusat123</Text>
+            </CustomButton>
+
+            <CustomButton
+              mode="outlined"
+              onPress={() => handleTestLogin('adminCabang')}
+              style={styles.testButton}
+            >
+              Admin Cabang Login
+              {'\n'}
+              <Text variant="bodySmall">admincabang@nu.or.id / admincabang123</Text>
             </CustomButton>
           </View>
-        )}
-      </Formik>
-    </View>
+        </View>
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    padding: 20,
+    flexGrow: 1,
     backgroundColor: '#fff',
+    padding: 20,
   },
-  title: {
-    textAlign: 'center',
-    marginBottom: 30,
-    marginTop: 50,
+  header: {
+    marginTop: 40,
+    marginBottom: 40,
+    gap: 8,
+  },
+  subtitle: {
+    opacity: 0.7,
   },
   form: {
-    gap: 15,
+    gap: 16,
   },
   input: {
     backgroundColor: '#fff',
   },
+  error: {
+    textAlign: 'center',
+  },
   button: {
-    marginTop: 10,
+    marginTop: 8,
+    borderRadius: 8,
   },
-  errorText: {
-    color: '#B00020',
-    fontSize: 12,
+  registerSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
   },
-  roleSelector: {
-    marginTop: 10,
+  registerButton: {
+    marginLeft: -8,
+  },
+  testAccountsSection: {
+    marginTop: 40,
+    gap: 16,
+  },
+  testAccountsTitle: {
+    textAlign: 'center',
+  },
+  testAccountsDescription: {
+    textAlign: 'center',
+    opacity: 0.7,
+  },
+  testButtons: {
+    gap: 12,
+  },
+  testButton: {
+    borderRadius: 8,
   },
 });
 
