@@ -9,7 +9,7 @@ import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PaperProvider, MD3LightTheme } from 'react-native-paper';
 import { AuthProvider } from './src/contexts/AuthContext';
-import { RootNavigator } from './src/navigation/RootNavigator';
+import RootNavigator from './src/navigation/RootNavigator';
 import { StatusBar } from 'react-native';
 
 const theme = {
