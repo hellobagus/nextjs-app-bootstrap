@@ -1,190 +1,231 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { Text, TextInput } from 'react-native-paper';
+import { Text, TextInput, useTheme } from 'react-native-paper';
 import { CustomButton } from '../../components';
 import { useAuth } from '../../contexts/AuthContext';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../types/navigation';
-import { Formik } from 'formik';
-import * as Yup from 'yup';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Register'>;
 
-const RegisterSchema = Yup.object().shape({
-  email: Yup.string().email('Invalid email').required('Email is required'),
-  password: Yup.string()
-    .min(8, 'Password must be at least 8 characters')
-    .required('Password is required'),
-  confirmPassword: Yup.string()
-    .oneOf([Yup.ref('password')], 'Passwords must match')
-    .required('Confirm password is required'),
-  name: Yup.string().required('Name is required'),
-  ktpNumber: Yup.string()
-    .matches(/^\d{16}$/, 'KTP number must be 16 digits')
-    .required('KTP number is required'),
-  kkNumber: Yup.string()
-    .matches(/^\d{16}$/, 'KK number must be 16 digits')
-    .required('KK number is required'),
-});
-
 const RegisterScreen: React.FC<Props> = ({ navigation }) => {
   const { register, isLoading, error } = useAuth();
+  const theme = useTheme();
+  
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    phoneNumber: '',
+    address: '',
+  });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+
+    if (!formData.name.trim()) {
+      errors.name = 'Name is required';
+    }
+
+    if (!formData.email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      errors.email = 'Invalid email format';
+    }
+
+    if (!formData.password) {
+      errors.password = 'Password is required';
+    } else if (formData.password.length < 6) {
+      errors.password = 'Password must be at least 6 characters';
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+    }
+
+    if (!formData.phoneNumber.trim()) {
+      errors.phoneNumber = 'Phone number is required';
+    }
+
+    if (!formData.address.trim()) {
+      errors.address = 'Address is required';
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleRegister = () => {
+    if (validateForm()) {
+      const { confirmPassword, ...registerData } = formData;
+      register(registerData);
+    }
+  };
 
   return (
-    <ScrollView style={styles.container}>
-      <Text variant="headlineMedium" style={styles.title}>Create Account</Text>
-      
-      <Formik
-        initialValues={{
-          email: '',
-          password: '',
-          confirmPassword: '',
-          name: '',
-          ktpNumber: '',
-          kkNumber: '',
-        }}
-        validationSchema={RegisterSchema}
-        onSubmit={async (values) => {
-          await register({
-            email: values.email,
-            password: values.password,
-            name: values.name,
-            ktpNumber: values.ktpNumber,
-            kkNumber: values.kkNumber,
-          });
-        }}
-      >
-        {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (
-          <View style={styles.form}>
-            <TextInput
-              label="Full Name"
-              value={values.name}
-              onChangeText={handleChange('name')}
-              onBlur={handleBlur('name')}
-              error={touched.name && !!errors.name}
-              style={styles.input}
-            />
-            {touched.name && errors.name && (
-              <Text style={styles.errorText}>{errors.name}</Text>
-            )}
+    <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.header}>
+        <Text variant="headlineMedium">Create Account</Text>
+        <Text variant="bodyLarge" style={styles.subtitle}>
+          Join the NU community
+        </Text>
+      </View>
 
-            <TextInput
-              label="Email"
-              value={values.email}
-              onChangeText={handleChange('email')}
-              onBlur={handleBlur('email')}
-              error={touched.email && !!errors.email}
-              style={styles.input}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            {touched.email && errors.email && (
-              <Text style={styles.errorText}>{errors.email}</Text>
-            )}
-
-            <TextInput
-              label="Password"
-              value={values.password}
-              onChangeText={handleChange('password')}
-              onBlur={handleBlur('password')}
-              secureTextEntry
-              error={touched.password && !!errors.password}
-              style={styles.input}
-            />
-            {touched.password && errors.password && (
-              <Text style={styles.errorText}>{errors.password}</Text>
-            )}
-
-            <TextInput
-              label="Confirm Password"
-              value={values.confirmPassword}
-              onChangeText={handleChange('confirmPassword')}
-              onBlur={handleBlur('confirmPassword')}
-              secureTextEntry
-              error={touched.confirmPassword && !!errors.confirmPassword}
-              style={styles.input}
-            />
-            {touched.confirmPassword && errors.confirmPassword && (
-              <Text style={styles.errorText}>{errors.confirmPassword}</Text>
-            )}
-
-            <TextInput
-              label="KTP Number"
-              value={values.ktpNumber}
-              onChangeText={handleChange('ktpNumber')}
-              onBlur={handleBlur('ktpNumber')}
-              error={touched.ktpNumber && !!errors.ktpNumber}
-              style={styles.input}
-              keyboardType="numeric"
-              maxLength={16}
-            />
-            {touched.ktpNumber && errors.ktpNumber && (
-              <Text style={styles.errorText}>{errors.ktpNumber}</Text>
-            )}
-
-            <TextInput
-              label="KK Number"
-              value={values.kkNumber}
-              onChangeText={handleChange('kkNumber')}
-              onBlur={handleBlur('kkNumber')}
-              error={touched.kkNumber && !!errors.kkNumber}
-              style={styles.input}
-              keyboardType="numeric"
-              maxLength={16}
-            />
-            {touched.kkNumber && errors.kkNumber && (
-              <Text style={styles.errorText}>{errors.kkNumber}</Text>
-            )}
-
-            {error && <Text style={styles.errorText}>{error}</Text>}
-
-            <CustomButton
-              mode="contained"
-              onPress={() => handleSubmit()}
-              loading={isLoading}
-              style={styles.button}
-            >
-              Register
-            </CustomButton>
-
-            <CustomButton
-              mode="text"
-              onPress={() => navigation.navigate('Login')}
-              style={styles.button}
-            >
-              Already have an account? Login
-            </CustomButton>
-          </View>
+      <View style={styles.form}>
+        <TextInput
+          label="Full Name"
+          value={formData.name}
+          onChangeText={(text) => setFormData({ ...formData, name: text })}
+          error={!!formErrors.name}
+          style={styles.input}
+        />
+        {formErrors.name && (
+          <Text style={[styles.errorText, { color: theme.colors.error }]}>
+            {formErrors.name}
+          </Text>
         )}
-      </Formik>
+
+        <TextInput
+          label="Email"
+          value={formData.email}
+          onChangeText={(text) => setFormData({ ...formData, email: text })}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          error={!!formErrors.email}
+          style={styles.input}
+        />
+        {formErrors.email && (
+          <Text style={[styles.errorText, { color: theme.colors.error }]}>
+            {formErrors.email}
+          </Text>
+        )}
+
+        <TextInput
+          label="Password"
+          value={formData.password}
+          onChangeText={(text) => setFormData({ ...formData, password: text })}
+          secureTextEntry
+          error={!!formErrors.password}
+          style={styles.input}
+        />
+        {formErrors.password && (
+          <Text style={[styles.errorText, { color: theme.colors.error }]}>
+            {formErrors.password}
+          </Text>
+        )}
+
+        <TextInput
+          label="Confirm Password"
+          value={formData.confirmPassword}
+          onChangeText={(text) => setFormData({ ...formData, confirmPassword: text })}
+          secureTextEntry
+          error={!!formErrors.confirmPassword}
+          style={styles.input}
+        />
+        {formErrors.confirmPassword && (
+          <Text style={[styles.errorText, { color: theme.colors.error }]}>
+            {formErrors.confirmPassword}
+          </Text>
+        )}
+
+        <TextInput
+          label="Phone Number"
+          value={formData.phoneNumber}
+          onChangeText={(text) => setFormData({ ...formData, phoneNumber: text })}
+          keyboardType="phone-pad"
+          error={!!formErrors.phoneNumber}
+          style={styles.input}
+        />
+        {formErrors.phoneNumber && (
+          <Text style={[styles.errorText, { color: theme.colors.error }]}>
+            {formErrors.phoneNumber}
+          </Text>
+        )}
+
+        <TextInput
+          label="Address"
+          value={formData.address}
+          onChangeText={(text) => setFormData({ ...formData, address: text })}
+          multiline
+          numberOfLines={3}
+          error={!!formErrors.address}
+          style={styles.input}
+        />
+        {formErrors.address && (
+          <Text style={[styles.errorText, { color: theme.colors.error }]}>
+            {formErrors.address}
+          </Text>
+        )}
+
+        {error && (
+          <Text style={[styles.errorText, { color: theme.colors.error }]}>
+            {error}
+          </Text>
+        )}
+
+        <CustomButton
+          mode="contained"
+          onPress={handleRegister}
+          loading={isLoading}
+          style={styles.button}
+        >
+          Register
+        </CustomButton>
+
+        <View style={styles.loginSection}>
+          <Text variant="bodyMedium">Already have an account? </Text>
+          <CustomButton
+            mode="text"
+            onPress={() => navigation.navigate('Login')}
+            style={styles.loginButton}
+          >
+            Sign In
+          </CustomButton>
+        </View>
+      </View>
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: '#fff',
+    padding: 20,
   },
-  title: {
-    textAlign: 'center',
-    marginBottom: 30,
-    marginTop: 50,
-    paddingHorizontal: 20,
+  header: {
+    marginTop: 40,
+    marginBottom: 40,
+    gap: 8,
+  },
+  subtitle: {
+    opacity: 0.7,
   },
   form: {
-    padding: 20,
-    gap: 15,
+    gap: 16,
   },
   input: {
     backgroundColor: '#fff',
   },
-  button: {
-    marginTop: 10,
-  },
   errorText: {
-    color: '#B00020',
     fontSize: 12,
+    marginTop: -12,
+    marginLeft: 4,
+  },
+  button: {
+    marginTop: 8,
+    borderRadius: 8,
+  },
+  loginSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+  },
+  loginButton: {
+    marginLeft: -8,
   },
 });
 
