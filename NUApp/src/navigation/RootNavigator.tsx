@@ -3,34 +3,35 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { useAuth } from '../contexts/AuthContext';
-import { AuthNavigator } from './AuthNavigator';
-import { MemberNavigator } from './MemberNavigator';
 import LoadingScreen from '../components/LoadingScreen';
+import AuthNavigator from './AuthNavigator';
+import { MemberNavigator } from './MemberNavigator';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-export const RootNavigator = () => {
+const RootNavigator = () => {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return <LoadingScreen message="Initializing..." />;
+    return <LoadingScreen />;
   }
 
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {user ? (
-          <Stack.Screen 
-            name="MemberApp" 
-            component={MemberNavigator}
-          />
+        {!user ? (
+          <Stack.Screen name="Auth" component={AuthNavigator} />
         ) : (
-          <Stack.Screen 
-            name="Auth" 
-            component={AuthNavigator} 
-          />
+          <>
+            {user.role === 'member' && (
+              <Stack.Screen name="MemberApp" component={MemberNavigator} />
+            )}
+            {/* TODO: Add AdminPusatNavigator and AdminCabangNavigator */}
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>
   );
 };
+
+export default RootNavigator;
