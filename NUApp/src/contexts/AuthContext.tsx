@@ -1,21 +1,11 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AuthState, LoginCredentials, RegisterData, User } from '../types/auth';
+import { AuthState, AuthContextType, LoginCredentials, RegisterData, User, mockUsers, initialAuthState } from '../types/auth';
 
-interface AuthContextType extends AuthState {
-  login: (credentials: LoginCredentials) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
-  logout: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    isLoading: true,
-    error: null,
-  });
+  const [state, setState] = useState<AuthState>(initialAuthState);
 
   // Initialize auth state
   React.useEffect(() => {
@@ -25,75 +15,106 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadUser = async () => {
     try {
       const userJson = await AsyncStorage.getItem('@user');
-      if (userJson) {
+      const tokenJson = await AsyncStorage.getItem('@token');
+      if (userJson && tokenJson) {
         setState({
           user: JSON.parse(userJson),
+          token: JSON.parse(tokenJson),
           isLoading: false,
           error: null,
         });
       } else {
-        setState({ user: null, isLoading: false, error: null });
+        setState(initialAuthState);
       }
     } catch (error) {
-      setState({ user: null, isLoading: false, error: 'Failed to load user' });
+      setState({ ...initialAuthState, error: 'Failed to load user' });
     }
   };
 
   const login = useCallback(async (credentials: LoginCredentials) => {
     try {
-      setState(prev => ({ ...prev, isLoading: true, error: null }));
+      setState({ ...initialAuthState, isLoading: true });
       
-      // TODO: Replace with actual API call
-      const mockUser: User = {
-        id: '1',
-        email: credentials.email,
-        role: credentials.role,
-        name: 'User Name', // This would come from the API
-      };
+      // Find user in mock data
+      const mockUser = mockUsers.find(
+        user => user.email === credentials.email && user.password === credentials.password
+      );
 
-      await AsyncStorage.setItem('@user', JSON.stringify(mockUser));
-      setState({ user: mockUser, isLoading: false, error: null });
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
+      if (!mockUser) {
+        throw new Error('Invalid credentials');
+      }
+
+      // Create a user object without the password
+      const { password, ...userWithoutPassword } = mockUser;
+      const token = `mock_token_${Date.now()}`;
+
+      await AsyncStorage.setItem('@user', JSON.stringify(userWithoutPassword));
+      await AsyncStorage.setItem('@token', JSON.stringify(token));
+
+      setState({
+        user: userWithoutPassword,
+        token,
         isLoading: false,
-        error: 'Login failed. Please try again.',
-      }));
+        error: null,
+      });
+    } catch (error) {
+      setState({
+        ...initialAuthState,
+        error: error instanceof Error ? error.message : 'Login failed. Please try again.',
+      });
     }
   }, []);
 
   const register = useCallback(async (data: RegisterData) => {
     try {
-      setState(prev => ({ ...prev, isLoading: true, error: null }));
+      setState({ ...initialAuthState, isLoading: true });
       
-      // TODO: Replace with actual API call
-      const mockUser: User = {
-        id: '1',
+      // Check if email already exists
+      if (mockUsers.some(user => user.email === data.email)) {
+        throw new Error('Email already registered');
+      }
+
+      // Create new user
+      const newUser: User = {
+        id: `M${Date.now()}`,
         email: data.email,
-        role: 'member',
         name: data.name,
+        role: 'member',
+        phoneNumber: data.phoneNumber,
+        address: data.address,
+        createdAt: new Date().toISOString(),
+        memberNumber: `2024${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
       };
 
-      await AsyncStorage.setItem('@user', JSON.stringify(mockUser));
-      setState({ user: mockUser, isLoading: false, error: null });
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
+      const token = `mock_token_${Date.now()}`;
+
+      await AsyncStorage.setItem('@user', JSON.stringify(newUser));
+      await AsyncStorage.setItem('@token', JSON.stringify(token));
+
+      setState({
+        user: newUser,
+        token,
         isLoading: false,
-        error: 'Registration failed. Please try again.',
-      }));
+        error: null,
+      });
+    } catch (error) {
+      setState({
+        ...initialAuthState,
+        error: error instanceof Error ? error.message : 'Registration failed. Please try again.',
+      });
     }
   }, []);
 
   const logout = useCallback(async () => {
     try {
       await AsyncStorage.removeItem('@user');
-      setState({ user: null, isLoading: false, error: null });
+      await AsyncStorage.removeItem('@token');
+      setState(initialAuthState);
     } catch (error) {
-      setState(prev => ({
-        ...prev,
+      setState({
+        ...initialAuthState,
         error: 'Logout failed. Please try again.',
-      }));
+      });
     }
   }, []);
 
@@ -113,8 +134,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
+
+export default AuthContext;
