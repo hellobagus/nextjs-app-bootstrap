@@ -10,11 +10,31 @@ export const AuthNavigator = () => {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerShown: false,
+        headerShown: true,
+        headerStyle: {
+          backgroundColor: '#fff',
+        },
+        headerShadowVisible: false,
       }}
     >
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen 
+        name="Login" 
+        component={LoginScreen}
+        options={{ 
+          title: 'Sign In',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="Register" 
+        component={RegisterScreen}
+        options={{ 
+          title: 'Create Account',
+          headerShown: false,
+        }}
+      />
     </Stack.Navigator>
   );
 };
+
+export default AuthNavigator;
